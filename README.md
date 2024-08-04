@@ -1,10 +1,10 @@
-# Node.js Application for Media Request Handling
+# Rerouterr
 
-This Node.js application interfaces with the Overseerr API to handle media requests automatically based on predefined rules. It is designed to streamline the approval and management of TV and movie requests by applying specific configurations such as quality profiles, root folders, and more.
+Rerouterr interfaces with the Overseerr API to handle media requests automatically based on predefined rules. It is designed to streamline the approval and management of TV and movie requests by applying specific configurations such as quality profiles, root folders, and more.
 
 ## Features
 
-- **Automatic Request Handling**: Automates the approval and configuration process for new media requests.
+- **Automatic Request Handling**: Automates the switching of an incoming request to different servers, root download path, and quality profile.
 - **Customizable Rules**: Allows defining rules based on media type, genres, keywords, and more.
 - **Integration with Overseerr**: Communicates with Overseerr's API to fetch and update request details.
 
@@ -31,40 +31,60 @@ The `rules` array contains definitions for how different types of media requests
 
 #### Matching Rules
 
-The application will match requests against these rules from top to bottom. The first rule that matches a request will be applied. It is important to order your rules wisely to ensure that the most specific rules are evaluated first.
+The application matches requests against these rules from top to bottom. The first rule that matches a request will be applied. It is important to order your rules wisely to ensure that the most specific rules are evaluated first.
 
-#### Example Configuration
+# Docker setup
 
-```yaml
-overseerr_baseurl: "http://192.168.0.254:5055"
-overseerr_api_key: "API KEY HERE ANON"
-rules:
-  - media_type: "tv"
-    genres:
-      - "Animation"
-    exclude_keywords:
-      - "anime"
-    root_folder: "/data/media/tv/cartoon"
-    server_id: 1
-    server_name: "Animated"
-    quality_profile_id: 8
-    approve: true
-  - media_type: "tv"
-    genres:
-      - "Animation"
-    include_keywords:
-      - "anime"
-    root_folder: "/data/media/tv/anime"
-    server_id: 1
-    server_name: "Animated"
-    approve: true
-  - media_type: "tv"
-    root_folder: "/data/media/tv/general"
-    server_id: 0
-    server_name: "General"
-    approve: true
-  - media_type: "movie"
-    root_folder: "/data/media/movies/general"
-    server_id: 0
-    server_name: "General"
-    approve: true
+To setup the Rerouter Docker, follow these steps:
+
+### 1. Clone the repository:
+```bash
+git clone https://github.com/ASolidBPlus/Rerouter/
+```
+
+### 2. Build the Docker image
+Ensure you are in the cloned repository folder when doing this
+```bash
+cd <cloned repo folder>
+docker build -t rerouterr.
+```
+
+### 3. Run the application
+```bash
+docker run 7777:7777 -v /path/to/host/config:/config rerouterr
+```
+Make sure that you place your config.yaml file where the /config volume location is, and setup the Webhook appropriately in Overseerr.
+
+## Webhook Setup in Overseerr
+
+To enable Rerouterr to handle requests, you need to set up a webhook in Overseerr:
+
+1. **Navigate to Settings in Overseerr**.
+2. **Go to Notifications and select Webhooks**.
+3. **Add a new webhook** with the following settings:
+   - **URL**: `http://<server-ip>:7777/webhook` (replace `<server-ip>` with the IP address of the server where Rerouterr is running).
+   - **JSON Payload**:
+     ```json
+     {
+         "notification_type": "{{notification_type}}",
+         "media": {
+             "media_type": "{{media_type}}",
+             "tmdbId": "{{media_tmdbid}}",
+             "tvdbId": "{{media_tvdbid}}",
+             "status": "{{media_status}}",
+             "status4k": "{{media_status4k}}"
+         },
+         "request": {
+             "request_id": "{{request_id}}",
+             "requestedBy_email": "{{requestedBy_email}}",
+             "requestedBy_username": "{{requestedBy_username}}",
+             "requestedBy_avatar": "{{requestedBy_avatar}}"
+         },
+         "extra": []
+     }
+     ```
+   - **Notification Type**: Choose "Request Pending Approval".
+
+### Important Note
+
+- **Auto-Approval**: Requests should not be set to auto-approve in Overseerr if you want Rerouterr to process them. Auto-approval bypasses the webhook and Rerouterr will not receive the request details needed to apply your custom rules.
