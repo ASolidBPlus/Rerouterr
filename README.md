@@ -12,27 +12,27 @@ Rerouterr interfaces with the Overseerr API to handle media requests automatical
 
 Configuration is managed through a `config.yaml` file, which contains crucial details such as the Overseerr base URL, API key, and rules for processing media requests. Below is a detailed breakdown of what this file includes:
 
-- `overseerr_baseurl`: The base URL for your Overseerr installation.
-- `overseerr_api_key`: Your Overseerr API key, used for authentication with the Overseerr API.
+- `overseerr_baseurl`: The base URL for your Overseerr installation. Required.
+- `overseerr_api_key`: Your Overseerr API key, used for authentication with the Overseerr API. Required.
 
 ### Rules
 
 The `rules` array holds definitions on how different types of media requests are processed. Each rule is structured to apply specific configurations based on certain conditions:
 
-- `media_type`: Specifies the type of media (`tv` or `movie`) to which the rule applies.
+- `media_type`: Specifies the type of media (`tv` or `movie`) to which the rule applies. Required.
 
 Each rule is divided into `match` and `apply` sections:
 
 #### Match Section
-- `genres`: List of genres that the rule applies to.
-- `exclude_keywords`: Keywords to exclude. If a request contains any of these keywords, it will not match this rule.
-- `include_keywords`: Keywords that must be included for a request to match this rule.
+- `genres`: List of genres that the rule applies to. Optional.
+- `exclude_keywords`: Keywords to exclude. If a request contains any of these keywords, it will not match this rule. Optional.
+- `include_keywords`: Keywords that must be included for a request to match this rule. Optional.
 
 #### Apply Section
-- `root_folder`: The directory where the media should be stored if the rule is applied.
-- `server_id`: The ID of the server where the media is hosted. Refer to the drop-down selection on a request in Overseerr, starting from 0. This number corresponds to the server selection.
-- `quality_profile_id`: The ID of the quality profile to apply to the request. This ID also starts from 0 and corresponds to the selection in a quality profile drop-down in Overseerr.
-- `approve`: Whether to automatically approve this request (`true` or `false`).
+- `root_folder`: The directory where the media should be stored if the rule is applied. Required.
+- `server_id`: The ID of the server where the media is hosted. Refer to the drop-down selection on a request in Overseerr, starting from 0. This number corresponds to the server selection. Required.
+- `quality_profile_id`: The ID of the quality profile to apply to the request. This ID also starts from 0 and corresponds to the selection in a quality profile drop-down in Overseerr. Optional (will default to default quality profile).
+- `approve`: Whether to automatically approve this request (`true` or `false`). Required.
 
 ### Matching Rules
 
@@ -85,21 +85,31 @@ rules:
 
 To setup the Rerouter Docker, follow these steps:
 
-### 1. Clone the repository:
+### 0. Manually build the repo (optional):
+Manually build the repo if you don't want to pull from the docker hub.
 ```bash
 git clone https://github.com/ASolidBPlus/Rerouter/
-```
-
-### 2. Build the Docker image
-Ensure you are in the cloned repository folder when doing this
-```bash
 cd <cloned repo folder>
 docker build -t rerouterr.
 ```
 
-### 3. Run the application
+### 1. Pull the Docker Image
+Pull the Docker image from my repo
 ```bash
-docker run 7777:7777 -v /path/to/host/config:/config rerouterr
+
+docker pull leojay/rerouterr:latest
+```
+
+### 2. Run the application
+If you manually built:
+```bash
+docker run -p 7777:7777 -v /path/to/host/config:/config rerouterr
+```
+
+If you didn't:
+If you manually built:
+```bash
+docker run -p 7777:7777 -v /path/to/host/config:/config leojay/rerouterr:latest
 ```
 Make sure that you place your config.yaml file where the /config volume location is, and setup the Webhook appropriately in Overseerr.
 

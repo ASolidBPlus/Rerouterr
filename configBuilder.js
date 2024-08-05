@@ -87,7 +87,10 @@ function validateRules(rules) {
             if (rule.apply.server_id == null) {
                 errors.push(`rules[${index}].apply.server_id is missing.`);
             }
-            // Optionally, validate other properties in `apply` section here...
+
+            if (rule.apply.approve == null) {
+                errors.push(`rules[${index}].apply.approve is missing.`);
+            }
         }
     });
     return errors;
