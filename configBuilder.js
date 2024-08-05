@@ -2,6 +2,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 
 function loadConfig(configFilePath) {
+    console.log(`Attempting to load config from: ${configFilePath}`)
     if (!configFilePath) {
         console.error('No config file path provided.');
         process.exit(1);
