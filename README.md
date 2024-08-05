@@ -10,29 +10,77 @@ Rerouterr interfaces with the Overseerr API to handle media requests automatical
 
 ## Configuration File Structure
 
-Configuration is handled through a `config.yaml` file, which contains essential details such as the Overseerr base URL, API key, and rules for processing media requests. Below is a detailed breakdown of the `config.yaml` file structure:
+Configuration is managed through a `config.yaml` file, which contains crucial details such as the Overseerr base URL, API key, and rules for processing media requests. Below is a detailed breakdown of what this file includes:
 
 - `overseerr_baseurl`: The base URL for your Overseerr installation.
 - `overseerr_api_key`: Your Overseerr API key, used for authentication with the Overseerr API.
 
 ### Rules
 
-The `rules` array contains definitions for how different types of media requests are handled. Each rule can specify the following fields:
+The `rules` array holds definitions on how different types of media requests are processed. Each rule is structured to apply specific configurations based on certain conditions:
 
-- `media_type`: The type of media (`tv` or `movie`).
-- `genres`: List of genres that this rule applies to.
-- `exclude_keywords`: Keywords to exclude when matching requests. If a request contains any of these keywords, it will not match this rule.
+- `media_type`: Specifies the type of media (`tv` or `movie`) to which the rule applies.
+
+Each rule is divided into `match` and `apply` sections:
+
+#### Match Section
+- `genres`: List of genres that the rule applies to.
+- `exclude_keywords`: Keywords to exclude. If a request contains any of these keywords, it will not match this rule.
 - `include_keywords`: Keywords that must be included for a request to match this rule.
+
+#### Apply Section
 - `root_folder`: The directory where the media should be stored if the rule is applied.
 - `server_id`: The ID of the server where the media is hosted. Refer to the drop-down selection on a request in Overseerr, starting from 0. This number corresponds to the server selection.
-- `server_name`: A friendly name for the server. This is used purely for your benefit and is not specifically linked to the Overseerr server.
 - `quality_profile_id`: The ID of the quality profile to apply to the request. This ID also starts from 0 and corresponds to the selection in a quality profile drop-down in Overseerr.
 - `approve`: Whether to automatically approve this request (`true` or `false`).
 
-#### Matching Rules
+### Matching Rules
 
 The application matches requests against these rules from top to bottom. The first rule that matches a request will be applied. It is important to order your rules wisely to ensure that the most specific rules are evaluated first.
 
+### Example Configuration
+
+```yaml
+overseerr_baseurl: "http://<overseerr ip/domain>:<overseerr port>"
+overseerr_api_key: "<api-key>"
+rules:
+  - media_type: "tv"
+    match:
+      genres:
+        - "Animation"
+      exclude_keywords:
+        - "anime"
+    apply:
+      root_folder: "/data/media/tv/cartoon"
+      server_id: 1
+      server_name: "Animated"
+      quality_profile_id: 8
+      approve: false
+  - media_type: "tv"
+    match:
+      genres:
+        - "Animation"
+      include_keywords:
+        - "anime"
+    apply:
+      root_folder: "/data/media/tv/anime"
+      server_id: 1
+      server_name: "Animated"
+      quality_profile_id: 7
+      approve: false
+  - media_type: "tv"
+    apply:
+      root_folder: "/data/media/tv/general"
+      server_id: 0
+      server_name: "General"
+      approve: false
+  - media_type: "movie"
+    apply:
+      root_folder: "/data/media/movies/general"
+      server_id: 0
+      server_name: "General"
+      approve: false
+```
 # Docker setup
 
 To setup the Rerouter Docker, follow these steps:

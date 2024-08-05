@@ -2,153 +2,128 @@ const express = require('express');
 const axios = require('axios');
 const { loadConfig } = require('./configBuilder');
 
+// Initialize the app and load configuration
 const app = express();
 app.use(express.json());
-
 const configFilePath = process.argv[2];
 const config = loadConfig(configFilePath);
 
-app.post('/webhook', async (req, res) => {
-    const request_data = req.body;
-    console.log("Received request data:", JSON.stringify(request_data, null, 2));
-    try {
-        await processRequest(request_data);
-        res.status(202).send('success');
-    } catch (error) {
-        console.error('Error processing request:', error);
-        res.status(500).send('Internal Server Error');
+// Create an Axios instance for API calls
+const axiosInstance = axios.create({
+    baseURL: config.overseerr_baseurl,
+    headers: {
+        'accept': 'application/json',
+        'X-Api-Key': config.overseerr_api_key,
+        'Content-Type': 'application/json'
     }
 });
 
-async function processRequest(request_data) {
-    const notification_type = request_data.notification_type;
+// Webhook endpoint
+app.post('/webhook', async (req, res, next) => {
+    try {
+        await processRequest(req.body);
+        res.status(202).send('Success');
+    } catch (error) {
+        next(error);
+    }
+});
 
-    if (notification_type === 'TEST_NOTIFICATION') {
-        console.log("Received test notification.");
+// Main processing function
+async function processRequest(request_data) {
+    if (request_data.notification_type === 'TEST_NOTIFICATION') {
+        console.log("Test notification received, no action required.");
         return;
     }
 
-    const request_username = request_data.request.requestedBy_username;
-    const request_id = request_data.request.request_id;
-    const media_tmdbid = request_data.media.tmdbId;
+    // Fetch additional media details
     const media_type = request_data.media.media_type;
-
-    console.log(`Overseerr webhook received for a new ${media_type} request by ${request_username}`);
-
-    let seasons = null;
-    if (request_data.extra) {
-        for (const item of request_data.extra) {
-            if (item.name === 'Requested Seasons') {
-                seasons = item.value;
-                break;
-            }
-        }
-    }
-
-    const get_url = `${config.overseerr_baseurl}/api/v1/${media_type}/${media_tmdbid}?language=en`;
-    const headers = {
-        'accept': 'application/json',
-        'X-Api-Key': config.overseerr_api_key
-    };
-
+    const media_tmdbid = request_data.media.tmdbId;
+    const get_url = `/api/v1/${media_type}/${media_tmdbid}?language=en`;
+    
     try {
-        const response = await axios.get(get_url, { headers });
+        const response = await axiosInstance.get(get_url);
         const response_data = response.data;
-        console.log(`Fetched data for requestID ${request_id} to determine how to process the request`);
 
-        let put_data = null;
-        let TargetArrServer = null;
-        let approve = false;
+        // Update the media object with the fetched details
+        request_data.media.genres = response_data.genres || [];
+        request_data.media.keywords = response_data.keywords || [];
 
-        if (media_type === 'movie' || media_type === 'tv') {
-            [put_data, TargetArrServer, approve] = determinePutData(media_type, response_data, seasons);
-        }
-
-        if (put_data) {
-            await applyOverseerrRequestModification(request_id, put_data);
-            console.log(`Successfully applied rule: ${JSON.stringify(put_data)}`);
-
-            if (approve) {
-                await approveRequest(request_id, TargetArrServer);
-                console.log(`Successfully approved request ${request_id} and set server to ${TargetArrServer}`);
-            } else {
-                console.log(`Request ${request_id} was modified but not approved.`);
-            }
+        console.log(`Processing request: Media type ${media_type}, ID ${request_data.request.request_id}`);
+        const [putData, rule, approve] = determinePutData(request_data);
+        
+        if (putData) {
+            console.log(`Rule matched: ${JSON.stringify(rule)}`);
+            await applyConfiguration(request_data.request.request_id, putData, approve);
         } else {
-            console.log("No matching configuration found for the request, keeping current settings.");
+            console.log("No applicable rule found.");
         }
     } catch (error) {
-        console.error(`Error fetching data for requestID ${request_id}:`, error);
+        console.error(`Error fetching media details or processing request: ${error}`);
+        throw error;  // Rethrow to handle in the middleware
     }
 }
 
-function determinePutData(media_type, response_data, seasons) {
+
+// Determine applicable rule based on the request data
+function determinePutData(request_data) {
+    const { media, extra = [] } = request_data;
+    
     for (const rule of config.rules) {
-        console.log(`Checking rule: ${JSON.stringify(rule)}`);
-
-        if (rule.media_type === media_type) {
-            const genresMatch = !rule.genres || rule.genres.some(genre => response_data.genres && response_data.genres.some(g => g.name === genre));
-            const excludeKeywordsMatch = rule.exclude_keywords && rule.exclude_keywords.some(keyword => response_data.keywords && response_data.keywords.some(k => k.name.includes(keyword)));
-            const includeKeywordsMatch = rule.include_keywords && rule.include_keywords.some(keyword => response_data.keywords && response_data.keywords.some(k => k.name.includes(keyword)));
-
-            if (genresMatch && !excludeKeywordsMatch && (!rule.include_keywords || includeKeywordsMatch)) {
-                console.log(`Match found with rule: ${JSON.stringify(rule)}`);
-                const put_data = {
-                    "mediaType": media_type,
-                    "rootFolder": rule.root_folder,
-                    "serverId": rule.server_id
-                };
-                console.log(rule)
-                if (rule.hasOwnProperty('quality_profile_id')) {
-
-                    put_data.profileId = rule.quality_profile_id;
-                }
-                if (media_type === 'tv' && seasons) {
-                    put_data.seasons = seasons.split(',').map(season => parseInt(season));
-                }
-
-                console.log(put_data)
-                return [put_data, rule.server_name, rule.approve];
+        if (media.media_type === rule.media_type && matchRule(media, rule.match || {})) {
+            const putData = {
+                mediaType: media.media_type,
+                rootFolder: rule.apply.root_folder,
+                serverId: rule.apply.server_id,
             }
+
+            if (rule.apply['quality_profile_id']) {
+                putData['profileId'] = rule.apply['quality_profile_id']
+            }
+
+            if (media.media_type === 'tv') {
+                const seasons = extra.filter(item => item.name === 'Requested Seasons').map(item => parseInt(item.value));
+                if (seasons.length) {
+                    putData['seasons'] = seasons;
+                }
+            }
+
+            return [putData, rule, rule.apply.approve];
         }
     }
     return [null, null, false];
 }
 
+function matchRule(media, match) {
+    const genresMatch = match.genres ? match.genres.some(genre => media.genres.some(g => g.name === genre)) : true;
+    const excludeMatch = match.exclude_keywords ? !match.exclude_keywords.some(keyword => media.keywords.some(k => k.name.includes(keyword))) : true;
+    const includeMatch = match.include_keywords ? match.include_keywords.some(keyword => media.keywords.some(k => k.name.includes(keyword))) : true;
 
-
-
-async function applyOverseerrRequestModification(request_id, put_data) {
-    const put_url = `${config.overseerr_baseurl}/api/v1/request/${request_id}`;
-    const headers = {
-        'accept': 'application/json',
-        'X-Api-Key': config.overseerr_api_key,
-        'Content-Type': 'application/json'
-    };
-    const response = await axios.put(put_url, put_data, { headers });
-    if (response.status !== 200) {
-        throw new Error(`Error applying backend server overwrite in Overseerr: ${response.statusText}`);
-    } else {
-        console.log(`Successfully modified target backend server to ${put_data.serverId} with profile ID ${put_data.profileId} in Overseerr`);
-    }
+    return genresMatch && excludeMatch && includeMatch;
 }
 
 
-async function approveRequest(request_id) {
-    const post_url = `${config.overseerr_baseurl}/api/v1/request/${request_id}/approve`;
-    const headers = {
-        'accept': 'application/json',
-        'X-Api-Key': config.overseerr_api_key,
-        'Content-Type': 'application/json'
-    };
-    const response = await axios.post(post_url, {}, { headers });
-    if (response.status !== 200) {
-        throw new Error(`Error updating request status: ${response.data}`);
-    } else {
-        console.log(`Successfully approved request ${request_id}.`);
+// Apply configuration and optionally approve the request
+async function applyConfiguration(request_id, putData, approve) {
+    try {
+        await axiosInstance.put(`/api/v1/request/${request_id}`, putData);
+        console.log(`Configuration applied for request ID ${request_id}`);
+        if (approve) {
+            await axiosInstance.post(`/api/v1/request/${request_id}/approve`);
+            console.log(`Request ${request_id} approved.`);
+        }
+    } catch (error) {
+        console.error(`Error processing request ID ${request_id}: ${error}`);
+        throw error;  // Rethrow to handle in the middleware
     }
 }
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+});
+
+// Server setup
 const port = process.env.PORT || 7777;
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

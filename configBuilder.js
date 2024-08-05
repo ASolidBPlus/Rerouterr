@@ -30,15 +30,15 @@ function loadConfig(configFilePath) {
         process.exit(1);
     }
 
-    // Log the loaded configuration
-    console.log('Configuration loaded successfully:', JSON.stringify(config.rules, null, 2));
-
     const missingConfig = validateConfig(config);
 
     if (missingConfig.length > 0) {
         console.error(`Configuration errors:\n${missingConfig.join('\n')}`);
         process.exit(1);
     }
+
+    console.log('Configuration loaded successfully:', JSON.stringify(config.rules, null, 2));
+
 
     return config;
 }
@@ -63,21 +63,30 @@ function validateConfig(config) {
     return errors;
 }
 
-
 function validateRules(rules) {
     let errors = [];
     rules.forEach((rule, index) => {
-        if (!rule.media_type) {
+        if (!rule.hasOwnProperty('media_type')) {
             errors.push(`rules[${index}].media_type is missing.`);
         }
-        if (!rule.root_folder) {
-            errors.push(`rules[${index}].root_folder is missing.`);
+        
+        if (!rule.hasOwnProperty('match')) {
+            console.warn(`rules[${index}].match is missing. Assigning a default empty object.`);
+            rule.match = {};  // Assign a default empty object if match is missing
+        } else if (typeof rule.match !== 'object') {
+            errors.push(`rules[${index}].match is not a proper object.`);
         }
-        if (rule.server_id == null) {  // Check for both null and undefined
-            errors.push(`rules[${index}].server_id is missing.`);
-        }
-        if (!rule.server_name) {
-            errors.push(`rules[${index}].server_name is missing.`);
+        
+        if (!rule.hasOwnProperty('apply') || typeof rule.apply !== 'object') {
+            errors.push(`rules[${index}].apply section is missing or not an object.`);
+        } else {
+            if (!rule.apply.hasOwnProperty('root_folder')) {
+                errors.push(`rules[${index}].apply.root_folder is missing.`);
+            }
+            if (rule.apply.server_id == null) {
+                errors.push(`rules[${index}].apply.server_id is missing.`);
+            }
+            // Optionally, validate other properties in `apply` section here...
         }
     });
     return errors;
