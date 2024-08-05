@@ -93,6 +93,7 @@ function determinePutData(request_data) {
     return [null, null, false];
 }
 
+// Determines if a rule matches
 function matchRule(media, match) {
     const genresMatch = match.genres ? match.genres.some(genre => media.genres.some(g => g.name === genre)) : true;
     const excludeMatch = match.exclude_keywords ? !match.exclude_keywords.some(keyword => media.keywords.some(k => k.name.includes(keyword))) : true;
