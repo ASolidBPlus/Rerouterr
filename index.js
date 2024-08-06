@@ -1,6 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const { loadConfig } = require('./configBuilder');
+const logger = require('./logger');
+
 
 // Initialize the app and load configuration
 const app = express();
@@ -31,7 +33,7 @@ app.post('/webhook', async (req, res, next) => {
 // Main processing function
 async function processRequest(request_data) {
     if (request_data.notification_type === 'TEST_NOTIFICATION') {
-        console.log("Test notification received, no action required.");
+        logger.info("Test notification received, no action required.");
         return;
     }
 
@@ -45,20 +47,20 @@ async function processRequest(request_data) {
         const response_data = response.data;
 
         // Update the media object with the fetched details
+        console.log(response_data)
         request_data.media.genres = response_data.genres || [];
         request_data.media.keywords = response_data.keywords || [];
-
-        console.log(`Processing request: Media type ${media_type}, ID ${request_data.request.request_id}`);
+        logger.info(`Proccessing Request...\nMedia Type: ${media_type}\nRequest ID: ${request_data.request.request_id}\nName: ${response_data.name}`)
         const [putData, rule, approve] = determinePutData(request_data);
         
         if (putData) {
-            console.log(`Rule matched: ${JSON.stringify(rule)}`);
+            logger.info(`Rule matched: ${JSON.stringify(rule)}`);
             await applyConfiguration(request_data.request.request_id, putData, approve);
         } else {
-            console.log("No applicable rule found.");
+            logger.info("No applicable rule found.");
         }
     } catch (error) {
-        console.error(`Error fetching media details or processing request: ${error}`);
+        logger.error(`Error fetching media details or processing request: ${error}`);
         throw error;  // Rethrow to handle in the middleware
     }
 }
@@ -107,25 +109,25 @@ function matchRule(media, match) {
 async function applyConfiguration(request_id, putData, approve) {
     try {
         await axiosInstance.put(`/api/v1/request/${request_id}`, putData);
-        console.log(`Configuration applied for request ID ${request_id}`);
+        logger.info(`Configuration applied for request ID ${request_id}`);
         if (approve) {
             await axiosInstance.post(`/api/v1/request/${request_id}/approve`);
-            console.log(`Request ${request_id} approved.`);
+            logger.info(`Request ${request_id} approved.`);
         }
     } catch (error) {
-        console.error(`Error processing request ID ${request_id}: ${error}`);
+        logger.error(`Error processing request ID ${request_id}: ${error}`);
         throw error;  // Rethrow to handle in the middleware
     }
 }
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err);
+    logger.error(err);
     res.status(500).send('Internal Server Error');
 });
 
 // Server setup
 const port = process.env.PORT || 7777;
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    logger.info(`Server is running on port ${port}`);
 });

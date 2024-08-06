@@ -1,15 +1,17 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
+const logger = require('./logger');
+
 
 function loadConfig(configFilePath) {
-    console.log(`Attempting to load config from: ${configFilePath}`)
+    logger.info(`Attempting to load config from: ${configFilePath}`)
     if (!configFilePath) {
-        console.error('No config file path provided.');
+        logger.error('No config file path provided.');
         process.exit(1);
     }
 
     if (!fs.existsSync(configFilePath)) {
-        console.error('Config file not found. Please provide a valid config file path.');
+        logger.error('Config file not found. Please provide a valid config file path.');
         process.exit(1);
     }
 
@@ -17,28 +19,28 @@ function loadConfig(configFilePath) {
     try {
         const fileContents = fs.readFileSync(configFilePath, 'utf8');
         if (!fileContents) {
-            console.error('Config file is empty.');
+            logger.error('Config file is empty.');
             process.exit(1);
         }
         config = yaml.load(fileContents);
     } catch (e) {
-        console.error('Error reading config file:', e);
+        logger.error('Error reading config file:', e);
         process.exit(1);
     }
 
     if (!config) {
-        console.error('Configuration is undefined or null after parsing.');
+        logger.error('Configuration is undefined or null after parsing.');
         process.exit(1);
     }
 
     const missingConfig = validateConfig(config);
 
     if (missingConfig.length > 0) {
-        console.error(`Configuration errors:\n${missingConfig.join('\n')}`);
+        logger.error(`Configuration errors:\n${missingConfig.join('\n')}`);
         process.exit(1);
     }
 
-    console.log('Configuration loaded successfully:', JSON.stringify(config.rules, null, 2));
+    logger.info(`Configuration loaded successfully: ${JSON.stringify(config.rules, null, 2)}`);
 
 
     return config;
@@ -72,7 +74,7 @@ function validateRules(rules) {
         }
         
         if (!rule.hasOwnProperty('match')) {
-            console.warn(`rules[${index}].match is missing. Assigning a default empty object.`);
+            logger.warn(`rules[${index}].match is missing. Assigning a default empty object.`);
             rule.match = {};  // Assign a default empty object if match is missing
         } else if (typeof rule.match !== 'object') {
             errors.push(`rules[${index}].match is not a proper object.`);
