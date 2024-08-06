@@ -53,7 +53,6 @@ rules:
     apply:
       root_folder: "/data/media/tv/cartoon"
       server_id: 1
-      server_name: "Animated"
       quality_profile_id: 8
       approve: false
   - media_type: "tv"
@@ -65,20 +64,17 @@ rules:
     apply:
       root_folder: "/data/media/tv/anime"
       server_id: 1
-      server_name: "Animated"
       quality_profile_id: 7
       approve: false
   - media_type: "tv"
     apply:
       root_folder: "/data/media/tv/general"
       server_id: 0
-      server_name: "General"
       approve: false
   - media_type: "movie"
     apply:
       root_folder: "/data/media/movies/general"
       server_id: 0
-      server_name: "General"
       approve: false
 ```
 # Docker setup
