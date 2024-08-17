@@ -68,7 +68,7 @@ async function processRequest(request_data) {
 
 // Determine applicable rule based on the request data
 function determinePutData(request_data) {
-    const { media, extra = [] } = request_data;
+    const { media, extra } = request_data;
     
     for (const rule of config.rules) {
         if (media.media_type === rule.media_type && matchRule(media, rule.match || {})) {
