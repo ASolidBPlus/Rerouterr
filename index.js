@@ -47,7 +47,7 @@ async function processRequest(request_data) {
         const response_data = response.data;
 
         // Update the media object with the fetched details
-        console.log(request_data)
+        console.log(response_data)
         request_data.media.genres = response_data.genres || [];
         request_data.media.keywords = response_data.keywords || [];
         logger.info(`Proccessing Request...\nMedia Type: ${media_type}\nRequest ID: ${request_data.request.request_id}\nName: ${response_data.name}`)
