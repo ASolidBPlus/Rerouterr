@@ -134,7 +134,7 @@ To enable Rerouterr to handle requests, you need to set up a webhook in Overseer
              "requestedBy_username": "{{requestedBy_username}}",
              "requestedBy_avatar": "{{requestedBy_avatar}}"
          },
-         "extra": []
+         "{{extra}}": []
      }
      ```
    - **Notification Type**: Choose "Request Pending Approval".
