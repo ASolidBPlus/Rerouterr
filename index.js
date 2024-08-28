@@ -41,7 +41,7 @@ async function processRequest(request_data) {
     const media_type = request_data.media.media_type;
     const media_tmdbid = request_data.media.tmdbId;
     const get_url = `/api/v1/${media_type}/${media_tmdbid}?language=en`;
-    
+
     try {
         const response = await axiosInstance.get(get_url);
         const response_data = response.data;
@@ -52,7 +52,7 @@ async function processRequest(request_data) {
         request_data.media.keywords = response_data.keywords || [];
         logger.info(`Proccessing Request...\nMedia Type: ${media_type}\nRequest ID: ${request_data.request.request_id}\nName: ${response_data.name}`)
         const [putData, rule, approve] = determinePutData(request_data);
-        
+
         if (putData) {
             logger.info(`Rule matched: ${JSON.stringify(rule)}`);
             await applyConfiguration(request_data.request.request_id, putData, approve);
@@ -69,7 +69,7 @@ async function processRequest(request_data) {
 // Determine applicable rule based on the request data
 function determinePutData(request_data) {
     const { media, extra = [] } = request_data;
-    
+
     for (const rule of config.rules) {
         if (media.media_type === rule.media_type && matchRule(media, rule.match || {})) {
             const putData = {
@@ -83,8 +83,8 @@ function determinePutData(request_data) {
             }
 
             if (media.media_type === 'tv') {
-                const seasons = extra.filter(item => item.name === 'Requested Seasons').map(item => parseInt(item.value));
-                if (seasons.length) {
+                const seasons = extra.find(item => item.name === 'Requested Seasons').value.split(",").map(item => parseInt(item))
+                if (seasons.length > 0) {
                     putData['seasons'] = seasons;
                 }
             }

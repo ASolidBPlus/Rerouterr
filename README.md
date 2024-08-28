@@ -31,6 +31,7 @@ Each rule is divided into `match` and `apply` sections:
 #### Apply Section
 - `root_folder`: The directory where the media should be stored if the rule is applied. Required.
 - `server_id`: The ID of the server where the media is hosted. Refer to the drop-down selection on a request in Overseerr, starting from 0. This number corresponds to the server selection. Required.
+   - NOTE: "Hidden" servers, such as a 4K server in a non-4K request, are included in the count. Adjust appropriately. 
 - `quality_profile_id`: The ID of the quality profile to apply to the request. This ID also starts from 0 and corresponds to the selection in a quality profile drop-down in Overseerr. Optional (will default to default quality profile).
 - `approve`: Whether to automatically approve this request (`true` or `false`). Required.
 
@@ -134,7 +135,7 @@ To enable Rerouterr to handle requests, you need to set up a webhook in Overseer
              "requestedBy_username": "{{requestedBy_username}}",
              "requestedBy_avatar": "{{requestedBy_avatar}}"
          },
-         "extra": []
+         "{{extra}}": []
      }
      ```
    - **Notification Type**: Choose "Request Pending Approval".
