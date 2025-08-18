@@ -1,0 +1,22 @@
+version: "3"
+services:
+  rerouterr:
+    restart: unless-stopped
+    container_name: rerouterr
+    build: .
+#    image: leojay/rerouterr:latest
+    networks:
+      - saltbox
+    hostname: rerouterr
+    ports:
+      - "7777:7777"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes: 
+      - /opt/rerouterr:/config # change me
+      - /etc/localtime:/etc/localtime:ro
+networks:
+  saltbox:
+    external: true

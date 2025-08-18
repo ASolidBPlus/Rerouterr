@@ -1,0 +1,72 @@
+overseerr_baseurl: "http://overseerr:5055"
+overseerr_api_key: "api_key"
+rules:
+  - media_type: "tv"
+    match:
+      include_keywords:
+        - "anime"
+    apply:
+      root_folder: "/mnt/plex/TV - Anime"
+      server_id: 1
+      approve: true
+  - media_type: "tv"
+    match:
+      genres:
+        - "Animation"
+        - "Kids"
+        - "Family"
+      certification:
+        - "TV-Y"
+        - "TV-Y7"
+        - "TV-Y7-FV"
+        - "TV-G"
+        - "TV-PG"
+    apply:
+      root_folder: "/mnt/plex/TV - Kids"
+      server_id: 0
+      approve: true
+  - media_type: "tv"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/TV"
+      server_id: 0
+      approve: true
+  - media_type: "movie"
+    match:
+      genres:
+        - "Animation"
+      include_keywords:
+        - "anime"
+      original_language: "ja"
+    apply:
+      root_folder: "/mnt/plex/Movies - Anime"
+      server_id: 1
+      approve: true
+  - media_type: "movie"
+    match:
+      genres:
+        - "Animation"
+        - "Family"
+        - "Kids"
+        - "Children"
+      certification:
+        - "G"
+        - "PG"
+        - "TV-G"
+        - "TV-PG"
+    apply:
+      root_folder: "/mnt/plex/Movies - Kids"
+      server_id: 0
+      approve: true
+  - media_type: "movie"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/Movies"
+      server_id: 0
+      approve: true
+  - media_type: "music"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/Music"
+      server_id: 0
+      approve: true

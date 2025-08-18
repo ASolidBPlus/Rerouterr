@@ -27,6 +27,8 @@ Each rule is divided into `match` and `apply` sections:
 - `genres`: List of genres that the rule applies to. Optional.
 - `exclude_keywords`: Keywords to exclude. If a request contains any of these keywords, it will not match this rule. Optional.
 - `include_keywords`: Keywords that must be included for a request to match this rule. Optional.
+- `content_ratings`: List of ratings that the rule applies to. Optional.
+- `original_language`: Original language the rule applies to. Optional.
 
 #### Apply Section
 - `root_folder`: The directory where the media should be stored if the rule is applied. Required.
@@ -40,75 +42,90 @@ Each rule is divided into `match` and `apply` sections:
 The application matches requests against these rules from top to bottom. The first rule that matches a request will be applied. It is important to order your rules wisely to ensure that the most specific rules are evaluated first.
 
 ### Example Configuration
-
-```yaml
-overseerr_baseurl: "http://<overseerr ip/domain>:<overseerr port>"
-overseerr_api_key: "<api-key>"
+```yml
+overseerr_baseurl: "http://overseerr:5055"
+overseerr_api_key: "api_key"
 rules:
+  - media_type: "tv"
+    match:
+      include_keywords:
+        - "anime"
+    apply:
+      root_folder: "/mnt/plex/TV - Anime"
+      server_id: 1
+      approve: true
   - media_type: "tv"
     match:
       genres:
         - "Animation"
-      exclude_keywords:
-        - "anime"
+        - "Kids"
+        - "Family"
+      certification:
+        - "TV-Y"
+        - "TV-Y7"
+        - "TV-Y7-FV"
+        - "TV-G"
+        - "TV-PG"
     apply:
-      root_folder: "/data/media/tv/cartoon"
-      server_id: 1
-      quality_profile_id: 8
-      approve: false
+      root_folder: "/mnt/plex/TV - Kids"
+      server_id: 0
+      approve: true
   - media_type: "tv"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/TV"
+      server_id: 0
+      approve: true
+  - media_type: "movie"
     match:
       genres:
         - "Animation"
       include_keywords:
         - "anime"
+      original_language: "ja"
     apply:
-      root_folder: "/data/media/tv/anime"
+      root_folder: "/mnt/plex/Movies - Anime"
       server_id: 1
-      quality_profile_id: 7
-      approve: false
-  - media_type: "tv"
-    apply:
-      root_folder: "/data/media/tv/general"
-      server_id: 0
-      approve: false
+      approve: true
   - media_type: "movie"
+    match:
+      genres:
+        - "Animation"
+        - "Family"
+        - "Kids"
+        - "Children"
+      certification:
+        - "G"
+        - "PG"
+        - "TV-G"
+        - "TV-PG"
     apply:
-      root_folder: "/data/media/movies/general"
+      root_folder: "/mnt/plex/Movies - Kids"
       server_id: 0
-      approve: false
+      approve: true
+  - media_type: "movie"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/Movies"
+      server_id: 0
+      approve: true
+  - media_type: "music"
+    match: {}
+    apply:
+      root_folder: "/mnt/plex/Music"
+      server_id: 0
+      approve: true
 ```
 # Docker setup
 
 To setup the Rerouter Docker, follow these steps:
 
-### 0. Manually build the repo (optional):
-Manually build the repo if you don't want to pull from the docker hub.
+### Docker compose
+You can utilise the docker compose file
 ```bash
-git clone https://github.com/ASolidBPlus/Rerouter/
-cd <cloned repo folder>
-docker build -t rerouterr.
+docker compose up
 ```
-
-### 1. Pull the Docker Image
-Pull the Docker image from my repo
-```bash
-
-docker pull leojay/rerouterr:latest
-```
-
-### 2. Run the application
-If you manually built:
-```bash
-docker run -p 7777:7777 -v /path/to/host/config:/config rerouterr
-```
-
-If you didn't:
-If you manually built:
-```bash
-docker run -p 7777:7777 -v /path/to/host/config:/config leojay/rerouterr:latest
-```
-Make sure that you place your config.yaml file where the /config volume location is, and setup the Webhook appropriately in Overseerr.
+Make sure that you setup the Webhook appropriately in Overseerr.
 
 ## Webhook Setup in Overseerr
 
@@ -117,27 +134,60 @@ To enable Rerouterr to handle requests, you need to set up a webhook in Overseer
 1. **Navigate to Settings in Overseerr**.
 2. **Go to Notifications and select Webhooks**.
 3. **Add a new webhook** with the following settings:
-   - **URL**: `http://<server-ip>:7777/webhook` (replace `<server-ip>` with the IP address of the server where Rerouterr is running).
+   - **URL**: `http://rerouterr:7777/webhook` (replace `<server-ip>` with the IP address of the server where Rerouterr is running).
    - **JSON Payload**:
-     ```json
-     {
-         "notification_type": "{{notification_type}}",
-         "media": {
-             "media_type": "{{media_type}}",
-             "tmdbId": "{{media_tmdbid}}",
-             "tvdbId": "{{media_tvdbid}}",
-             "status": "{{media_status}}",
-             "status4k": "{{media_status4k}}"
-         },
-         "request": {
-             "request_id": "{{request_id}}",
-             "requestedBy_email": "{{requestedBy_email}}",
-             "requestedBy_username": "{{requestedBy_username}}",
-             "requestedBy_avatar": "{{requestedBy_avatar}}"
-         },
-         "{{extra}}": []
-     }
-     ```
+```json
+{
+    "notification_type": "{{notification_type}}",
+    "media": {
+        "media_type": "{{media_type}}",
+        "tmdbId": "{{media_tmdbid}}",
+        "tvdbId": "{{media_tvdbid}}",
+        "status": "{{media_status}}",
+        "status4k": "{{media_status4k}}",
+        "genres": [
+            {
+                "id": "{{genre_id}}",
+                "name": "{{genre_name}}"
+            }
+        ],
+        "keywords": [
+            {
+                "id": "{{keyword_id}}",
+                "name": "{{keyword_name}}"
+            }
+        ],
+        "original_language": "{{original_language}}",
+        "contentRatings": {
+            "results": [
+                {
+                    "iso_3166_1": "{{rating_country}}",
+                    "rating": "{{rating_value}}"
+                }
+            ]
+        },
+        "releases": {
+            "results": [
+                {
+                    "iso_3166_1": "{{rating_country}}",
+                    "release_dates": [
+                        {
+                            "certification": "{{rating_value}}"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "request": {
+        "request_id": "{{request_id}}",
+        "requestedBy_email": "{{requestedBy_email}}",
+        "requestedBy_username": "{{requestedBy_username}}",
+        "requestedBy_avatar": "{{requestedBy_avatar}}"
+    },
+    "{{extra}}": []
+}
+```
    - **Notification Type**: Choose "Request Pending Approval".
 
 ### Important Note
